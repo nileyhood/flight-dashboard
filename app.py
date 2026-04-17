@@ -57,16 +57,25 @@ if flight_file:
 
         df_airports = pd.read_csv(airport_file)
 
-        cols = df_airports.columns.tolist()
-
-        col1, col2, col3 = st.columns(3)
-
-        with col1:
-            code_col = st.selectbox("Airport Code Column", cols)
-        with col2:
-            lat_col = st.selectbox("Latitude Column", cols)
-        with col3:
-            lon_col = st.selectbox("Longitude Column", cols)
+        # 컬럼 고정
+        code_col = "Orig"
+        lat_col = "Airport1Latitude"
+        lon_col = "Airport1Longitude"
+        
+        # 안전장치 (컬럼 없으면 에러 메시지)
+        required_cols = [code_col, lat_col, lon_col]
+        
+        missing_cols = [col for col in required_cols if col not in df_airports.columns]
+        
+        if missing_cols:
+            st.error(f"Missing columns in airport CSV: {missing_cols}")
+            st.stop()
+        
+        # 중복 제거 (필수)
+        df_airports_clean = df_airports.drop_duplicates(subset=[code_col])
+        
+        # 매핑 생성
+        airport_map = df_airports_clean.set_index(code_col)[[lat_col, lon_col]].to_dict("index")
 
         airport_map = df_airports.set_index(code_col)[[lat_col, lon_col]].to_dict("index")
 
