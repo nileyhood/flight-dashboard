@@ -109,21 +109,74 @@ if uploaded_file:
 
     fig4 = px.pie(pattern_counts, names='Pattern', values='Count')
     st.plotly_chart(fig4, use_container_width=True)
-
     # -----------------------------
-    # 🔎 Route Explorer
+    # 🗺️ Route Map (LINE VERSION)
     # -----------------------------
-    st.subheader("🔎 Route Explorer")
-
-    selected_route = st.selectbox(
-        "Select a Route",
-        filtered_df['SEQ_PATTERN'].unique()
+    st.subheader("🗺️ Route Map (Connected)")
+    
+    airport_file = st.sidebar.file_uploader(
+        "Upload Airport Coordinates CSV",
+        type=["csv"]
     )
-
-    route_data = filtered_df[filtered_df['SEQ_PATTERN'] == selected_route]
-
-    st.write(f"Total Flights for this route: {len(route_data)}")
-    st.dataframe(route_data)
+    
+    if airport_file:
+    
+        df_airports = pd.read_csv(airport_file)
+    
+        # 공항 코드 → 좌표 매핑
+        airport_map = df_airports.set_index("Orig")[
+            ["Airport1Latitude", "Airport1Longitude"]
+        ].to_dict("index")
+    
+        selected_route = st.selectbox(
+            "Select Route to Visualize",
+            filtered_df['SEQ_PATTERN'].unique()
+        )
+    
+        # route → 좌표 변환
+        codes = selected_route.split('-')
+    
+        lats = []
+        lons = []
+    
+        for code in codes:
+            if code in airport_map:
+                lats.append(airport_map[code]["Airport1Latitude"])
+                lons.append(airport_map[code]["Airport1Longitude"])
+    
+        if len(lats) > 1:
+    
+            map_df = pd.DataFrame({
+                "lat": lats,
+                "lon": lons
+            })
+    
+            fig = px.line_mapbox(
+                map_df,
+                lat="lat",
+                lon="lon",
+                zoom=3,
+                height=500
+            )
+    
+            # 점도 같이 표시
+            fig.add_scattermapbox(
+                lat=lats,
+                lon=lons,
+                mode='markers+text',
+                text=codes,
+                textposition="top right"
+            )
+    
+            fig.update_layout(
+                mapbox_style="open-street-map",
+                margin={"r":0,"t":0,"l":0,"b":0}
+            )
+    
+            st.plotly_chart(fig, use_container_width=True)
+    
+        else:
+            st.warning("Not enough coordinates to draw route.")
 
 else:
     st.info("👈 Upload your Flight Data CSV to begin analysis.")
